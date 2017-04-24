@@ -8,7 +8,8 @@ This is a small daemon to translate Unity's MenuModels to KDE DBusMenus.
 
 *All:*
  * GLib (>= 2.40.0)
- * valac (>= 0.24.0)
+ * Qt5 (>= 5.7.0)
+ * KDE Frameworks
 
 ---
 *Installation after building*

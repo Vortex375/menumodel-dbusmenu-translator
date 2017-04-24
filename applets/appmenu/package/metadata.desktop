@@ -1,0 +1,31 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Global Menu
+Name[ca]=Menú global
+Name[da]=Global menu
+Name[en_GB]=Global Menu
+Name[es]=Menú global
+Name[nl]=Globaal menu
+Name[pt]=Menu Global
+Name[ru]=Меню приложения
+Name[sk]=Globálne menu
+Name[sr]=Глобални мени
+Name[sr@ijekavian]=Глобални мени
+Name[sr@ijekavianlatin]=Globalni meni
+Name[sr@latin]=Globalni meni
+Name[uk]=Загальне меню
+Name[x-test]=xxGlobal Menuxx
+Icon=show-menu
+Type=Service
+X-KDE-PluginInfo-Author=Kai Uwe Broulik
+X-KDE-PluginInfo-Email=kde@privat.broulik.de
+X-KDE-PluginInfo-License=GPL
+X-KDE-PluginInfo-Name=org.kde.plasma.appmenu
+X-KDE-PluginInfo-Version=2.0
+X-KDE-PluginInfo-Website=plasma.kde.org
+X-KDE-ServiceTypes=Plasma/Applet
+X-Plasma-API=declarativeappletscript
+X-KDE-Library=plasma_applet_appmenu
+
+X-Plasma-MainScript=ui/main.qml
+X-KDE-PluginInfo-Category=Windows and Tasks
