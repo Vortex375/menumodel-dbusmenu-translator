@@ -22,8 +22,7 @@
 #define APPMENUGTKMENUIMPORTER_H
 
 #include <QtCore/QObject>
-#include "qdbusmenumodel.h"
-#include "qdbusactiongroup.h"
+#include <glib.h>
 
 class QAction;
 class QDBusPendingCallWatcher;
@@ -38,9 +37,7 @@ class AppMenuGtkMenuImporter: public QObject
 {
     Q_OBJECT
 public:
-    AppMenuGtkMenuImporter(const QString &m_service, const QString &m_path, const QString& a_service,
-                           const QString& a_path, const QString &window_path, const QString &unity_path,
-                           QObject *parent = 0);
+    AppMenuGtkMenuImporter(const QString &service, const QString &path, QObject *parent = 0);
     ~AppMenuGtkMenuImporter() override;
     QMenu *menu() const;
 public Q_SLOTS:
@@ -56,11 +53,6 @@ protected:
 
 private:
     QMenu* m_menu;
-    QDBusMenuModel m_appmenu;
-    QDBusMenuModel m_menubar;
-    QDBusActionGroup m_application;
-    QDBusActionGroup m_window;
-    QDBusActionGroup m_unity;
     Q_DISABLE_COPY(AppMenuGtkMenuImporter)
 };
 

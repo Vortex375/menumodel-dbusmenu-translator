@@ -69,6 +69,7 @@ add_definitions(-DQT_NO_KEYWORDS)
 add_definitions(-DQT_NO_URL_CAST_FROM_STRING)
 
 add_subdirectory(libdbusmenuqt)
+add_subdirectory(libqmenumodel)
 add_subdirectory(appmenu)
 add_subdirectory(applets/appmenu)
 

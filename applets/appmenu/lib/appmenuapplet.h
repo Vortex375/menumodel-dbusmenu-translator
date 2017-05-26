@@ -80,7 +80,7 @@ public Q_SLOTS:
     void trigger(QQuickItem *ctx, int idx);
 
 protected:
-    bool eventFilter(QObject *watched, QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event);
 
 private:
     QMenu *createMenu(int idx) const;

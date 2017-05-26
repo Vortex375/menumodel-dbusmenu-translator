@@ -5,7 +5,6 @@ set(kded_appmenu_SRCS
     menuimporter.cpp
     appmenu_dbus.cpp
     verticalmenu.cpp
-    kdbusimporter.h
     )
 
 qt5_add_dbus_adaptor(kded_appmenu_SRCS com.canonical.AppMenu.Registrar.xml
@@ -24,6 +23,7 @@ target_link_libraries(appmenu
     KF5::WindowSystem
     ${X11_LIBRARIES}
     dbusmenuqt
+    qmenumodel
 )
 
 if (HAVE_X11)

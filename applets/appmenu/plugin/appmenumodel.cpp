@@ -38,9 +38,26 @@
 
 #include <dbusmenuimporter.h>
 
-#include "dbusmenuadaptor.h"
-#include "gtkmenuadaptor.h"
+static const QByteArray s_x11AppMenuServiceNamePropertyName = QByteArrayLiteral("_KDE_NET_WM_APPMENU_SERVICE_NAME");
+static const QByteArray s_x11AppMenuObjectPathPropertyName = QByteArrayLiteral("_KDE_NET_WM_APPMENU_OBJECT_PATH");
 
+class KDBusMenuImporter : public DBusMenuImporter
+{
+
+public:
+    KDBusMenuImporter(const QString &service, const QString &path, QObject *parent)
+        : DBusMenuImporter(service, path, parent)
+    {
+
+    }
+
+protected:
+    QIcon iconForName(const QString &name) override
+    {
+        return QIcon::fromTheme(name);
+    }
+
+};
 
 AppMenuModel::AppMenuModel(QObject *parent)
             : QAbstractListModel(parent)
@@ -53,9 +70,8 @@ AppMenuModel::AppMenuModel(QObject *parent)
     //we'll select the new menu when the focus changes
     connect(QDBusConnection::sessionBus().interface(), &QDBusConnectionInterface::serviceOwnerChanged, this, [this](const QString &serviceName, const QString &oldOwner, const QString &newOwner)
     {
-        Q_UNUSED(oldOwner);
-        if ((serviceName == m_serviceName_gtk || serviceName == m_serviceName_kde) && newOwner.isEmpty()) {
-            m_adaptor = nullptr;
+        if (serviceName == m_serviceName && newOwner.isEmpty()) {
+            setMenuAvailable(false);
             Q_EMIT modelNeedsUpdate();
         }
     });
@@ -65,10 +81,15 @@ AppMenuModel::~AppMenuModel() = default;
 
 bool AppMenuModel::menuAvailable() const
 {
-    if(m_adaptor)
-        return m_adaptor->menuAvailable();
-    else
-        return false;
+    return m_menuAvailable;
+}
+
+void AppMenuModel::setMenuAvailable(bool set)
+{
+    if (m_menuAvailable != set) {
+        m_menuAvailable = set;
+        Q_EMIT menuAvailableChanged();
+    }
 }
 
 int AppMenuModel::rowCount(const QModelIndex &parent) const
@@ -85,8 +106,8 @@ void AppMenuModel::update()
         m_activeActions.clear();
     }
 
-    if (m_adaptor && m_adaptor->menu() && m_adaptor->menuAvailable()) {
-        const auto &actions = m_adaptor->menu()->actions();
+    if (m_menu && m_menuAvailable) {
+        const auto &actions = m_menu->actions();
         for (QAction *action : actions) {
             m_activeActions.append(action);
             m_activeMenu.append(action->text());
@@ -105,7 +126,7 @@ void AppMenuModel::onActiveWindowChanged(WId id)
 
         static QHash<QByteArray, xcb_atom_t> s_atoms;
 
-        auto getWindowPropertyString = [c,this](WId id, const QByteArray &name) -> QByteArray {
+        auto getWindowPropertyString = [c, this](WId id, const QByteArray &name) -> QByteArray {
             QByteArray value;
             if (!s_atoms.contains(name)) {
                 const xcb_intern_atom_cookie_t atomCookie = xcb_intern_atom(c, false, name.length(), name.constData());
@@ -139,34 +160,11 @@ void AppMenuModel::onActiveWindowChanged(WId id)
         };
 
         auto updateMenuFromWindowIfHasMenu = [this, &getWindowPropertyString](WId id) {
-            const QString serviceNameKde = QString::fromUtf8(getWindowPropertyString(id, s_x11QtServiceNamePropertyName));
-            if (!serviceNameKde.isEmpty()) {
-                m_adaptor = new DBusMenuAdaptor();
-                connect(m_adaptor,&MenuAdaptor::menuAvailableChanged,this,[this](){
-                    Q_EMIT this->menuAvailableChanged();
-                });
-                QMap<MenuAdaptor::MenuObjectPathRole,QString> objectPaths;
-                const QString objectPathKde = QString::fromUtf8(getWindowPropertyString(id, s_x11QtObjectPathPropertyName));
-                objectPaths[MenuAdaptor::MenuBar] = objectPathKde;
-                m_adaptor->updateApplicationMenu(serviceNameKde,objectPaths);
-                return true;
-            }
-            const QString serviceNameGtk = QString::fromUtf8(getWindowPropertyString(id, s_x11GtkServiceNamePropertyName));
-            if (!serviceNameGtk.isEmpty())
-            {
-                m_adaptor = new GtkMenuAdaptor();
-                QMap<MenuAdaptor::MenuObjectPathRole,QString> objectPaths;                ;
-                const QString objectPathGtkAppmenu = QString::fromUtf8(getWindowPropertyString(id, s_x11GtkAppMenuObjectPathPropertyName));
-                objectPaths[MenuAdaptor::AppMenu] = (objectPathGtkAppmenu);
-                const QString objectPathGtkMenubar = QString::fromUtf8(getWindowPropertyString(id, s_x11GtkMenuBarObjectPathropertyName));
-                objectPaths[MenuAdaptor::MenuBar] = objectPathGtkMenubar;
-                const QString objectPathGtkApp = QString::fromUtf8(getWindowPropertyString(id, s_x11GtkApplicationObjectPathPropertyName));
-                objectPaths[MenuAdaptor::Application] = objectPathGtkApp;
-                const QString objectPathGtkWin = QString::fromUtf8(getWindowPropertyString(id, s_x11GtkWindowObjectPathPropertyName));
-                objectPaths[MenuAdaptor::Window] = (objectPathGtkWin);
-                const QString objectPathUnity = QString::fromUtf8(getWindowPropertyString(id, s_x11UnityObjectPathPropertyName));
-                objectPaths[MenuAdaptor::Unity] = (objectPathUnity);
-                m_adaptor->updateApplicationMenu(serviceNameGtk,objectPaths);
+            const QString serviceName = QString::fromUtf8(getWindowPropertyString(id, s_x11AppMenuServiceNamePropertyName));
+            const QString menuObjectPath = QString::fromUtf8(getWindowPropertyString(id, s_x11AppMenuObjectPathPropertyName));
+
+            if (!serviceName.isEmpty() && !menuObjectPath.isEmpty()) {
+                updateApplicationMenu(serviceName, menuObjectPath);
                 return true;
             }
             return false;
@@ -193,7 +191,7 @@ void AppMenuModel::onActiveWindowChanged(WId id)
         }
 
         //no menu found, set it to unavailable
-        m_adaptor = nullptr;
+        setMenuAvailable(false);
         Q_EMIT modelNeedsUpdate();
     }
 #endif
@@ -225,3 +223,41 @@ QVariant AppMenuModel::data(const QModelIndex &index, int role) const
 
     return QVariant();
 }
+
+void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QString &menuObjectPath)
+{
+    if (m_serviceName == serviceName && m_menuObjectPath == menuObjectPath) {
+        if (m_importer) {
+            QMetaObject::invokeMethod(m_importer, "updateMenu", Qt::QueuedConnection);
+        }
+        return;
+    }
+
+    m_serviceName = serviceName;
+    m_menuObjectPath = menuObjectPath;
+
+    if (m_importer) {
+        m_importer->deleteLater();
+    }
+
+    m_importer = new KDBusMenuImporter(serviceName, menuObjectPath, this);
+    QMetaObject::invokeMethod(m_importer, "updateMenu", Qt::QueuedConnection);
+
+    connect(m_importer.data(), &DBusMenuImporter::menuUpdated, this, [=](QMenu *menu) {
+        m_menu = m_importer->menu();
+        if (m_menu.isNull() || menu != m_menu) {
+            return;
+        }
+
+        //cache first layer of sub menus, which we'll be popping up
+        for(QAction *a: m_menu->actions()) {
+            if (a->menu()) {
+                m_importer->updateMenu(a->menu());
+            }
+        }
+
+        setMenuAvailable(true);
+        Q_EMIT modelNeedsUpdate();
+    });
+}
+

@@ -24,19 +24,16 @@
 #include <KWindowSystem>
 #include <QPointer>
 
-#include "menuadaptor.h"
-
-#pragma once
-
 class QMenu;
 class QAction;
 class QModelIndex;
+class KDBusMenuImporter;
 
 class AppMenuModel : public QAbstractListModel
 {
     Q_OBJECT
 
-    Q_PROPERTY(bool menuAvailable READ menuAvailable NOTIFY menuAvailableChanged)
+    Q_PROPERTY(bool menuAvailable READ menuAvailable WRITE setMenuAvailable NOTIFY menuAvailableChanged)
 
 public:
     explicit AppMenuModel(QObject *parent = 0);
@@ -51,10 +48,12 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     QHash<int, QByteArray> roleNames() const;
 
+    void updateApplicationMenu(const QString &serviceName, const QString &menuObjectPath);
+
     bool menuAvailable() const;
+    void setMenuAvailable(bool set);
 
-public Q_SLOTS:
-
+private Q_SLOTS:
     void onActiveWindowChanged(WId id);
     void update();
 
@@ -65,12 +64,13 @@ Q_SIGNALS:
 private:
     bool m_menuAvailable;
 
+    QPointer<QMenu> m_menu;
     QStringList m_activeMenu;
     QList<QAction *> m_activeActions;
 
-    QPointer<MenuAdaptor> m_adaptor;
+    QString m_serviceName;
+    QString m_menuObjectPath;
 
-    QString m_serviceName_kde;
-    QString m_serviceName_gtk;
+    QPointer<KDBusMenuImporter> m_importer;
 };
 
